@@ -1,0 +1,77 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Paris sportifs - Moins de 3.5 et 4.5</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #121212; color: #eee; margin: 0; padding: 20px;}
+        h1 { text-align: center; }
+        #matches { margin-top: 20px; }
+        .match { background: #222; padding: 10px; margin-bottom: 10px; border-radius: 5px; }
+        .loading { text-align: center; margin-top: 20px; }
+        button { background: #1E90FF; border: none; padding: 10px 15px; color: white; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #3ea0ff; }
+    </style>
+</head>
+<body>
+    <h1>Paris sportifs - Moins de 3.5 et 4.5</h1>
+    <button id="loadBtn">Charger les matchs</button>
+    <div id="matches"></div>
+    <div class="loading" id="loading" style="display:none;">Chargement...</div>
+<script>
+const apiKey = "df382cc5f6524048a46c6cf2be07e043"; // Ta clé API ici
+const matchesDiv = document.getElementById("matches");
+const loadBtn = document.getElementById("loadBtn");
+const loadingDiv = document.getElementById("loading");
+
+async function fetchMatches() {
+    matchesDiv.innerHTML = "";
+    loadingDiv.style.display = "block";
+    try {
+        // Exemple API pour football, filtre sur totaux (exemple)
+        // IMPORTANT: Adapte l'URL à ton API choisie (ici fictif)
+        const response = await fetch("https://api.the-odds-api.com/v4/sports/soccer_epl/odds/?regions=eu&markets=totals&apiKey=" + apiKey);
+        if (!response.ok) throw new Error("Erreur API");
+        const data = await response.json();
+        
+        // Filtrer les matchs avec "total" moins de 3.5 et 4.5 avec probabilité élevée
+        const filtered = data.filter(match => {
+            if (!match.bookmakers) return false;
+            for (let bm of match.bookmakers) {
+                for (let market of bm.markets) {
+                    if (market.key === "totals") {
+                        for (let outcome of market.outcomes) {
+                            if ((outcome.point === 3.5 || outcome.point === 4.5) && outcome.price >= 1.8) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+            return false;
+        });
+
+        if (filtered.length === 0) {
+            matchesDiv.innerHTML = "<p>Aucun match trouvé avec ces critères.</p>";
+        } else {
+            filtered.forEach(match => {
+                const div = document.createElement("div");
+                div.className = "match";
+                div.innerHTML = `<strong>${match.home_team} vs ${match.away_team}</strong><br/>
+                                 Date: ${new Date(match.commence_time).toLocaleString()}<br/>`;
+                matchesDiv.appendChild(div);
+            });
+        }
+    } catch(e) {
+        matchesDiv.innerHTML = "<p>Erreur lors du chargement des données.</p>";
+    } finally {
+        loadingDiv.style.display = "none";
+    }
+}
+
+loadBtn.addEventListener("click", fetchMatches);
+</script>
+</body>
+</html>
