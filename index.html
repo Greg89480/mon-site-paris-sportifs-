@@ -4,80 +4,59 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Pronos Foot IA</title>
-  <link rel="icon" href="favicon.png" type="image/png">
+  <title>Pronostics IA - Matchs de Foot</title>
   <style>
     body {
-      background-color: #f9f9f9;
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
       color: #222;
-      font-family: 'Segoe UI', sans-serif;
       padding: 20px;
-    }
-    h1 {
-      text-align: center;
-      color: #2b2b2b;
     }
     .match {
       background: #fff;
-      border: 1px solid #ddd;
       padding: 15px;
-      margin-bottom: 15px;
+      margin-bottom: 10px;
       border-radius: 8px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-    }
-    .team-logos {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .team-logos img {
-      width: 24px;
-      height: 24px;
-    }
-    .loader {
-      text-align: center;
-      font-size: 18px;
-      color: #555;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
   </style>
 </head>
 <body>
-  <h1>Pronostics Foot - IA</h1>
-  <div id="matches" class="loader">Chargement des matchs...</div>
+  <h1>Matchs avec estimation IA (France, Belgique, Espagne, Italie, Angleterre)</h1>
+  <div id="matches">Chargement...</div>
 
   <script>
-    async function fetchMatches() {
-      const matchesDiv = document.getElementById('matches');
+    const apiKey = '7e393b4e73657c6d9de4b631cb650183';
+    const leagues = [61, 62, 63, 64, 65]; // Example IDs
+
+    async function getMatches() {
+      const today = new Date().toISOString().split('T')[0];
+      const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+      const matchDiv = document.getElementById('matches');
+      matchDiv.innerHTML = 'Chargement...';
+
       try {
-        const response = await fetch('https://api.sportspagefeeds.com/api/v1/soccer/matches?api_key=df382cc5f6524048a46c6cf2be07e043');
-        if (!response.ok) throw new Error('Erreur API');
-        const data = await response.json();
-        const matches = data.matches || [];
-
-        const sortedMatches = matches.sort((a, b) => new Date(a.date) - new Date(b.date));
-
-        matchesDiv.innerHTML = '';
-        sortedMatches.forEach(match => {
-          const div = document.createElement('div');
-          div.className = 'match';
-          div.innerHTML = `
-            <div class="team-logos">
-              <img src="${match.home_team_logo || '#'}" alt="">
-              <strong>${match.home_team}</strong> vs 
-              <strong>${match.away_team}</strong>
-              <img src="${match.away_team_logo || '#'}" alt="">
-            </div>
-            <div>Date: ${new Date(match.date).toLocaleString()}</div>
-            <div><em>Estimation IA (moins de 3.5): ${Math.round(Math.random() * (97 - 86) + 86)}%</em></div>
-          `;
-          matchesDiv.appendChild(div);
-        });
+        let html = '';
+        for (let league of leagues) {
+          const res = await fetch(`https://v3.football.api-sports.io/fixtures?league=${league}&season=2024&from=${today}&to=${tomorrow}`, {
+            headers: { 'x-apisports-key': apiKey }
+          });
+          const data = await res.json();
+          for (let match of data.response) {
+            const h = match.teams.home.name;
+            const a = match.teams.away.name;
+            const d = match.fixture.date.split('T')[0];
+            html += `<div class="match"><strong>${h} vs ${a}</strong><br>Date: ${d}<br>Estimation IA: <em>Calcul en cours...</em></div>`;
+          }
+        }
+        matchDiv.innerHTML = html || 'Aucun match trouvé';
       } catch (e) {
-        matchesDiv.innerHTML = "Erreur lors du chargement des matchs.";
+        matchDiv.innerHTML = 'Erreur de chargement';
         console.error(e);
       }
     }
-    fetchMatches();
+
+    getMatches();
   </script>
 </body>
 </html>
