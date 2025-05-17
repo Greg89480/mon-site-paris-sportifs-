@@ -1,135 +1,188 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>PrédikFoot AI - Prédictions Football</title>
-  <style>
-    body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 1rem; background: #f7f7f7; color: #222; }
-    header, footer { text-align: center; margin-bottom: 2rem; }
-    header h1 { font-size: 2rem; margin-bottom: 0.5rem; }
-    nav a { margin: 0 0.5rem; text-decoration: none; color: #0077cc; }
-    nav a:hover { text-decoration: underline; }
-    .match { background: white; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
-    .league-time { display: flex; justify-content: space-between; font-size: 0.9rem; color: #666; margin-bottom: 0.5rem; }
-    .teams { display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 1.1rem; margin-bottom: 0.5rem; }
-    .team { display: flex; align-items: center; gap: 0.5rem; }
-    .team img { width: 32px; height: 32px; object-fit: contain; }
-    .vs { font-weight: bold; font-size: 1.2rem; color: #333; }
-    .predictions { font-size: 0.9rem; color: #444; line-height: 1.4; }
-    .loading, .error { text-align: center; font-size: 1.1rem; margin-top: 2rem; }
-    footer { margin-top: 3rem; font-size: 0.8rem; color: #999; }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PrédikFoot AI - Prédictions Foot</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    max-width: 900px;
+    margin: auto;
+    background: #fafafa;
+    color: #222;
+    padding: 20px;
+  }
+  h1 {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  #matches {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+  .match {
+    background: white;
+    border-radius: 8px;
+    padding: 12px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .teams {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex: 1;
+  }
+  .team {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .team img {
+    width: 40px;
+    height: 40px;
+  }
+  .vs {
+    font-weight: bold;
+    font-size: 1.2rem;
+    margin: 0 15px;
+  }
+  .league {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #555;
+    margin-bottom: 8px;
+    text-align: center;
+  }
+  .time {
+    font-size: 0.9rem;
+    color: #666;
+  }
+  .predictions {
+    min-width: 160px;
+    font-size: 0.85rem;
+    color: #333;
+    background: #eef4ff;
+    padding: 8px;
+    border-radius: 6px;
+    text-align: center;
+  }
+  #loading {
+    text-align: center;
+    font-size: 1.2rem;
+    margin-top: 40px;
+  }
+  #error {
+    text-align: center;
+    color: red;
+    font-weight: bold;
+    margin-top: 40px;
+  }
+</style>
 </head>
 <body>
-  <header>
-    <h1>PrédikFoot AI</h1>
-    <nav><a href="#">Accueil</a><a href="#">À propos</a><a href="#">Contact</a></nav>
-  </header>
+  <h1>PrédikFoot AI - Prédictions Matchs Football</h1>
+  <div id="loading">Chargement des matchs...</div>
+  <div id="error" style="display:none;"></div>
+  <div id="matches"></div>
 
-  <main>
-    <h2>Matchs du 2023-09-10 - Prédictions</h2>
-    <div id="matches"></div>
-    <div id="loading" class="loading">Chargement des matchs...</div>
-    <div id="error" class="error" style="display:none;"></div>
-  </main>
+<script>
+const apiKey = '7e393b4e73657c6d9de4b631cb650183'; // Ta clé API ici
 
-  <footer>&copy; 2025 PrédikFoot AI - Tous droits réservés.</footer>
+// Ligue ID selon API-SPORTS
+const leagues = [
+  {id: 61, name: 'Ligue 1 (France)'},
+  {id: 135, name: 'Serie A (Italie)'},
+  {id: 78, name: 'Bundesliga (Allemagne)'},
+  {id: 140, name: 'La Liga (Espagne)'},
+  {id: 39, name: 'Premier League (Angleterre)'}
+];
 
-  <script>
-    const leagueIds = [
-      { id: 61, name: "Ligue 1 (France)" },
-      { id: 135, name: "Serie A (Italie)" },
-      { id: 78, name: "Bundesliga (Allemagne)" },
-      { id: 140, name: "La Liga (Espagne)" },
-      { id: 39, name: "Premier League (Angleterre)" }
-    ];
+const matchesDiv = document.getElementById('matches');
+const loadingDiv = document.getElementById('loading');
+const errorDiv = document.getElementById('error');
 
-    const apiKey = "7e393b4e73657c6d9de4b631cb650183";
-    const today = "2023-09-10";
+function formatTime(dateStr) {
+  const d = new Date(dateStr);
+  return d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+}
 
-    const matchesEl = document.getElementById("matches");
-    const loadingEl = document.getElementById("loading");
-    const errorEl = document.getElementById("error");
+async function fetchMatches() {
+  loadingDiv.style.display = 'block';
+  errorDiv.style.display = 'none';
+  matchesDiv.innerHTML = '';
 
-    async function fetchMatches() {
-      try {
-        loadingEl.style.display = "block";
-        errorEl.style.display = "none";
-        matchesEl.innerHTML = "";
+  // Date du jour format YYYY-MM-DD
+  const today = new Date().toISOString().slice(0,10);
 
-        let allMatches = [];
+  try {
+    let allMatches = [];
 
-        for (const league of leagueIds) {
-          const url = `https://v3.football.api-sports.io/fixtures?date=${today}&league=${league.id}&season=2023`;
-          console.log("Fetch URL:", url);
-
-          const response = await fetch(url, {
-            headers: { "x-apisports-key": apiKey }
-          });
-
-          if (!response.ok) {
-            throw new Error(`Erreur API pour ${league.name}: ${response.statusText}`);
-          }
-
-          const data = await response.json();
-          console.log(`Réponse API pour ${league.name}:`, data);
-
-          if (data.response.length > 0) {
-            const leagueMatches = data.response.map(m => ({ ...m, leagueName: league.name }));
-            allMatches = allMatches.concat(leagueMatches);
-          }
-        }
-
-        allMatches.sort((a,b) => new Date(a.fixture.date) - new Date(b.fixture.date));
-
-        if (allMatches.length === 0) {
-          matchesEl.innerHTML = "<p>Aucun match prévu ce jour.</p>";
-        } else {
-          for (const match of allMatches) {
-            const matchDate = new Date(match.fixture.date);
-            const timeStr = matchDate.toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"});
-
-            // Prédictions simulées aléatoires
-            const under35 = Math.floor(Math.random() * 30) + 65;
-            const under45 = Math.floor(Math.random() * 15) + 80;
-
-            const matchHtml = `
-              <div class="match">
-                <div class="league-time">
-                  <span>${match.leagueName}</span>
-                  <span>${timeStr}</span>
-                </div>
-                <div class="teams">
-                  <div class="team">
-                    <img src="${match.teams.home.logo}" alt="${match.teams.home.name}" />
-                    <span>${match.teams.home.name}</span>
-                  </div>
-                  <div class="vs">vs</div>
-                  <div class="team">
-                    <span>${match.teams.away.name}</span>
-                    <img src="${match.teams.away.logo}" alt="${match.teams.away.name}" />
-                  </div>
-                </div>
-                <div class="predictions">
-                  <p>Prédiction IA - Moins de 3.5 buts : ${under35}%</p>
-                  <p>Prédiction IA - Moins de 4.5 buts : ${under45}%</p>
-                </div>
-              </div>
-            `;
-            matchesEl.insertAdjacentHTML("beforeend", matchHtml);
-          }
-        }
-      } catch (err) {
-        errorEl.textContent = err.message;
-        errorEl.style.display = "block";
-        loadingEl.style.display = "none";
-      } finally {
-        loadingEl.style.display = "none";
+    for (const league of leagues) {
+      const url = `https://v3.football.api-sports.io/fixtures?date=${today}&league=${league.id}&season=2023`;
+      const res = await fetch(url, {
+        headers: {'x-apisports-key': apiKey}
+      });
+      if (!res.ok) throw new Error(`Erreur API: ${res.status} ${res.statusText}`);
+      const data = await res.json();
+      if (data.response.length > 0) {
+        // Ajout du nom de la ligue dans chaque match
+        data.response.forEach(m => m.leagueName = league.name);
+        allMatches = allMatches.concat(data.response);
       }
     }
 
-    fetchMatches();
-  </script>
+    if (allMatches.length === 0) {
+      matchesDiv.innerHTML = '<p>Aucun match prévu aujourd\'hui.</p>';
+    } else {
+      // Tri par heure du match
+      allMatches.sort((a,b) => new Date(a.fixture.date) - new Date(b.fixture.date));
+      for (const match of allMatches) {
+        const time = formatTime(match.fixture.date);
+
+        // Prédiction IA simple simulée (en vrai tu pourras la remplacer par une vraie IA)
+        const under35 = Math.floor(Math.random()*30)+60; // 60 à 90%
+        const under45 = Math.floor(Math.random()*20)+75; // 75 à 95%
+
+        const html = `
+          <div class="match">
+            <div class="teams">
+              <div class="team">
+                <img src="${match.teams.home.logo}" alt="${match.teams.home.name}" />
+                <span>${match.teams.home.name}</span>
+              </div>
+              <div class="vs">vs</div>
+              <div class="team">
+                <span>${match.teams.away.name}</span>
+                <img src="${match.teams.away.logo}" alt="${match.teams.away.name}" />
+              </div>
+            </div>
+            <div>
+              <div class="league">${match.leagueName}</div>
+              <div class="time">${time}</div>
+            </div>
+            <div class="predictions">
+              <div>Prob. Moins de 3.5 buts : <strong>${under35}%</strong></div>
+              <div>Prob. Moins de 4.5 buts : <strong>${under45}%</strong></div>
+            </div>
+          </div>
+        `;
+        matchesDiv.insertAdjacentHTML('beforeend', html);
+      }
+    }
+  } catch (err) {
+    errorDiv.textContent = err.message;
+    errorDiv.style.display = 'block';
+  } finally {
+    loadingDiv.style.display = 'none';
+  }
+}
+
+fetchMatches();
+</script>
 </body>
 </html>
